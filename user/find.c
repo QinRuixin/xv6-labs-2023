@@ -60,7 +60,7 @@ void recfind(char* p, int fd, char* filename){
       continue;
     }
     memmove(p, de.name, sizeof(de.name));
-    p[sizeof(de.name)] = 0;
+    p[sizeof(de.name)] = 0; // todo weired
     if(stat(buf, &st) < 0){
       printf("ls: cannot stat %s\n", buf);
       for(int i = 0; i < strlen(de.name); ++i){
@@ -74,7 +74,7 @@ void recfind(char* p, int fd, char* filename){
         fprintf(2, "find: cannot open %s\n", buf);
         exit(1);
       }
-      char *newp = buf + strlen(buf);
+      char *newp = buf + strlen(buf); // newp not p so no bug
       *newp++ = '/';
       recfind(newp, recfd, filename);
       close(recfd);
