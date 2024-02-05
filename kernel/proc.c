@@ -718,3 +718,17 @@ procdump(void)
     printf("\n");
   }
 }
+
+int pgacess(uint64 va, int n, uint64 buf){
+  unsigned int kbuf;
+  struct proc *p = myproc();
+  for(int i = 0; i < n; ++i){
+    pte_t *pte = walk(p->pagetable, (uint64)(va + PGSIZE * i), 0);
+    if(*pte & PTE_A){
+      kbuf |= (1L << i);
+      *pte = *pte & (~PTE_A);
+    }
+  }
+  copyout(p->pagetable, buf, (char*)&kbuf, sizeof(kbuf));
+  return 0;
+}
