@@ -67,6 +67,43 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
+  // } else if(r_scause() == 7){// Store/AMO access fault
+  } else if(r_scause() == 15){// Store/AMO page fault
+    uint64 va = r_stval();
+    if(va >= MAXVA){
+      printf("usertrap(): virtual address overflow: %p pid=%d\n", va, p->pid);
+      printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+      setkilled(p);
+    } else {
+      pte_t *pte;
+      char *mem;
+      uint64 pa;
+      uint flags;
+      uint64 rounddown_va = PGROUNDDOWN(va);
+      if((pte = walk(p->pagetable, rounddown_va, 0)) == 0)
+        panic("trap: pte should exist");
+      if((*pte & RSW_W) == 0){
+        // error
+        printf("usertrap(): try to access unwritable memory %p pid=%d\n", r_scause(), p->pid);
+        printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+        setkilled(p);
+      } else {
+        pa = PTE2PA(*pte);
+        flags = PTE_FLAGS(*pte) | PTE_W;
+        if((mem = kalloc()) == 0){
+          // goto err;
+          exit(-1);
+        }
+        memmove(mem, (char*)pa, PGSIZE);
+        uvmunmap(p->pagetable, rounddown_va, 1, 1); // important
+        if(mappages(p->pagetable, rounddown_va, PGSIZE, (uint64)mem, flags) != 0){
+          kfree(mem);
+          // goto err;
+          exit(-1);
+        }
+      }
+    }
+
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
