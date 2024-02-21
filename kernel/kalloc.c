@@ -24,6 +24,8 @@ struct {
   struct spinlock lock;
   struct run *freelist;
   ushort refcnt[REF_IDX(PHYSTOP)];
+  uint64 usedmem;
+  uint64 freemem;
 } kmem;
 
 void
@@ -43,6 +45,7 @@ freerange(void *pa_start, void *pa_end)
   p = (char*)PGROUNDUP((uint64)pa_start);
   for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE)
     kfree(p);
+  kmem.usedmem = 0;
 }
 
 // Free the page of physical memory pointed at by pa,
@@ -73,6 +76,8 @@ kfree(void *pa)
   acquire(&kmem.lock);
   r->next = kmem.freelist;
   kmem.freelist = r;
+  kmem.freemem += PGSIZE;
+  kmem.usedmem -= PGSIZE;
   release(&kmem.lock);
 }
 
@@ -89,6 +94,8 @@ kalloc(void)
   if(r){
     kmem.freelist = r->next;
     kmem.refcnt[REF_IDX(r)] = 1;
+    kmem.freemem -= PGSIZE;
+    kmem.usedmem += PGSIZE;
   }
   release(&kmem.lock);
 
@@ -102,4 +109,29 @@ void kincref(void *pa){
   kmem.refcnt[REF_IDX(pa)] += 1;
   release(&kmem.lock);
   return;
+}
+
+uint64
+kfreemem(void)
+{
+  uint64 free = 0;
+  acquire(&kmem.lock);
+  free = kmem.freemem;
+  release(&kmem.lock);
+  // struct run *r = kmem.freelist;
+  // while (r){
+  //   r = r->next;
+  //   free += PGSIZE;
+  // }
+  return free;
+}
+
+uint64
+kusedmem(void)
+{
+  uint64 used = 0;
+  acquire(&kmem.lock);
+  used = kmem.usedmem;
+  release(&kmem.lock);
+  return used;
 }
