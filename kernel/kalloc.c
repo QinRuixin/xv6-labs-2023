@@ -21,6 +21,8 @@ struct run {
 struct {
   struct spinlock lock;
   struct run *freelist;
+  uint64 usedmem;
+  uint64 freemem;
 } kmem;
 
 void
@@ -59,6 +61,8 @@ kfree(void *pa)
   acquire(&kmem.lock);
   r->next = kmem.freelist;
   kmem.freelist = r;
+  kmem.freemem += PGSIZE;
+  kmem.usedmem -= PGSIZE;
   release(&kmem.lock);
 }
 
@@ -72,8 +76,11 @@ kalloc(void)
 
   acquire(&kmem.lock);
   r = kmem.freelist;
-  if(r)
+  if(r){
     kmem.freelist = r->next;
+    kmem.freemem -= PGSIZE;
+    kmem.usedmem += PGSIZE;
+  }
   release(&kmem.lock);
 
   if(r)
@@ -85,10 +92,23 @@ uint64
 kfreemem(void)
 {
   uint64 free = 0;
-  struct run *r = kmem.freelist;
-  while (r){
-    r = r->next;
-    free += PGSIZE;
-  }
+  acquire(&kmem.lock);
+  free = kmem.freemem;
+  release(&kmem.lock);
+  // struct run *r = kmem.freelist;
+  // while (r){
+  //   r = r->next;
+  //   free += PGSIZE;
+  // }
   return free;
+}
+
+uint64
+kusedmem(void)
+{
+  uint64 used = 0;
+  acquire(&kmem.lock);
+  used = kmem.usedmem;
+  release(&kmem.lock);
+  return used;
 }
