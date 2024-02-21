@@ -101,6 +101,8 @@ extern uint64 sys_unlink(void);
 extern uint64 sys_link(void);
 extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
+extern uint64 sys_trace(void);
+extern uint64 sys_info(void);
 
 #ifdef LAB_NET
 extern uint64 sys_connect(void);
@@ -139,6 +141,8 @@ static uint64 (*syscalls[])(void) = {
 #ifdef LAB_PGTBL
 [SYS_pgaccess] sys_pgaccess,
 #endif
+[SYS_trace]   sys_trace,
+[SYS_sysinfo] sys_info,
 };
 
 
@@ -154,6 +158,10 @@ syscall(void)
     // Use num to lookup the system call function for num, call it,
     // and store its return value in p->trapframe->a0
     p->trapframe->a0 = syscalls[num]();
+    if( 1 << num & p->mtrace ){
+      printf("%d: syscall %s -> %d\n",
+        p->pid, p->name, p->trapframe->a0); 
+    }
   } else {
     printf("%d %s: unknown sys call %d\n",
             p->pid, p->name, num);

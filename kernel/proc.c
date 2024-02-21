@@ -344,6 +344,8 @@ fork(void)
   np->usyscall->pid = np->pid;
 #endif
 
+  np->mtrace = p->mtrace;
+  
   release(&np->lock);
 
   acquire(&wait_lock);
@@ -731,4 +733,15 @@ int pgacess(uint64 va, int n, uint64 buf){
   }
   copyout(p->pagetable, buf, (char*)&kbuf, sizeof(kbuf));
   return 0;
+}
+uint64
+usedproc(void){
+  struct proc *p;
+  uint64 num = 0;
+  for(p = proc; p < &proc[NPROC]; p++){
+    if(p->state != UNUSED){
+      num += 1;
+    }
+  }
+  return num;
 }
