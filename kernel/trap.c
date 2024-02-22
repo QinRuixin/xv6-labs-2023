@@ -101,6 +101,9 @@ usertrap(void)
           // goto err;
           exit(-1);
         }
+        printf("-----------------------process %d: page fault trap memmove count++\n", myproc()->pid);
+        // printf("-----------------------page fault copy count++\n");
+        vmprint(p->pagetable);
       }
     }
 

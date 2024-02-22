@@ -317,7 +317,12 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   uint flags;
   // char *mem;
 
+  printf("process size:%d\n", sz);
+  printf("old\n");
+  vmprint(old);
   for(i = 0; i < sz; i += PGSIZE){
+    printf("new i=%d\n", i);
+    vmprint(new);
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
     if((*pte & PTE_V) == 0)
@@ -340,6 +345,8 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     //   goto err;
     // }
   }
+  printf("new i=%d\n", i);
+  vmprint(new);
   return 0;
 
  err:
@@ -391,6 +398,8 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
           kfree(mem);
           return -1;
         }
+        printf("-----------------------process: page fault copyout copy count++\n");
+        vmprint(pagetable);
       } else {
         return -1;
       }
@@ -473,5 +482,32 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return 0;
   } else {
     return -1;
+  }
+}
+
+void
+vmprintd(pagetable_t pagetable, int d){
+  for(int i = 0; i < 512; ++i){
+    pte_t pte = pagetable[i];
+    if((pte & PTE_V)){
+      for(int i = 1; i < d; ++i){
+        printf(" ..");
+      }
+      printf(" ..%d: pte %p pa %p\n", i, pte, PTE2PA(pte));
+      if (d <= 2)
+        vmprintd((pagetable_t)PTE2PA(pte), d+1);
+    }
+  }
+}
+
+void
+vmprint(pagetable_t pagetable){
+  printf("page table %p\n", pagetable);
+  for(int i = 0; i < 512; ++i){
+    pte_t pte = pagetable[i];
+    if(pte & PTE_V){
+      printf(" ..%d: pte %p pa %p\n", i, pte, PTE2PA(pte));
+      vmprintd((pagetable_t)PTE2PA(pte), 2);
+    }
   }
 }
